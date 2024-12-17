@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Three.js Decals</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #uploadButton {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.171.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <input type="file" id="uploadButton" accept="image/*">
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Controls
+    const orbitControls = new OrbitControls(camera, renderer.domElement);
+    camera.position.set(0, 3, 5);
+    orbitControls.update();
+
+    // Lighting
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(5, 5, 5).normalize();
+    scene.add(light);
+
+    // Add a sphere (example object)
+    const geometry = new THREE.SphereGeometry(2, 32, 32);
+    const material = new THREE.MeshStandardMaterial({ color: 0x0077ff });
+    const sphere = new THREE.Mesh(geometry, material);
+    scene.add(sphere);
+
+    // Raycaster
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    // Array to store decals
+    const decals = [];
+
+    // Dynamic sticker upload
+    let stickerTexture;
+    const uploadButton = document.getElementById('uploadButton');
+    uploadButton.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const textureLoader = new THREE.TextureLoader();
+          stickerTexture = textureLoader.load(e.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Apply a decal
+    function applyDecal(intersect) {
+      if (!stickerTexture) return;
+
+      const position = intersect.point;
+      const normal = intersect.face.normal.clone();
+
+      // Decal size and orientation
+      const decalSize = new THREE.Vector3(1, 1, 1); // Width, Height, Depth
+      const decalMaterial = new THREE.MeshBasicMaterial({
+        map: stickerTexture,
+        transparent: true,
+        depthTest: true,
+        depthWrite: false,
+        polygonOffset:true,
+        polygonOffsetFactor:-4,
+      });
+
+      // Create decal geometry
+      const decalGeometry = new DecalGeometry(intersect.object, position, new THREE.Euler(), decalSize);
+      const decalMesh = new THREE.Mesh(decalGeometry, decalMaterial);
+
+      // Add decal to the scene and store it
+      scene.add(decalMesh);
+      decals.push(decalMesh);
+    }
+
+    // Mouse click event
+    window.addEventListener('click', (event) => {
+      // Calculate mouse position in normalized device coordinates
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      // Update raycaster
+      raycaster.setFromCamera(mouse, camera);
+
+      // Check for intersections
+      const intersects = raycaster.intersectObject(sphere);
+      if (intersects.length > 0) {
+        applyDecal(intersects[0]);
+      }
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
